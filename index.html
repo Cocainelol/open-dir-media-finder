@@ -30,14 +30,21 @@
     <br><br>
     Do not make typos or search will not work. Also please use a VPN
 
-    <script>function searchMovie() {
+    <script>
+        function searchMovie() {
     let movieName = document.getElementById("movieInput").value;
     if (movieName.trim() !== "") {
-        let searchUrl = `https://www.google.com/search?q=%22index+of%22+%22.mkv%22+OR+%22.mov%22+OR+%22.zip%22+OR+%22.avi%22+OR+%22.mp4%22+%22${encodeURIComponent(movieName)}%22`;
+        let encodedName = encodeURIComponent(`"${movieName}"`);
+        let searchUrl = `https://www.google.com/search?q=intext%3A${encodedName}+intitle%3A%22index.of%22+%2B%28wmv%7Cmpg%7Cavi%7Cmp4%7Cmkv%7Cmov%29+-inurl%3A%28jsp%7Cpl%7Cphp%7Chtml%7Caspx%7Chtm%7Ccf%7Cshtml%29`;
         window.open(searchUrl, "_blank");
     } else {
         alert("Please enter a movie name.");
     }
+            document.getElementById("movieInput").addEventListener("keydown", function(event) {
+    if (event.key === "Enter") searchMovie();
+});
+
+}
 }</script>
 </body>
 </html>
