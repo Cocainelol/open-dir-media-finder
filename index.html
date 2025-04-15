@@ -1,50 +1,194 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Media Download Tool</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 50px;
-        }
-        input {
-            padding: 10px;
-            width: 300px;
-            font-size: 16px;
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Media Download Tool</title>
+  <!-- Link to the manifest for PWA support -->
+  <link rel="manifest" href="manifest.json">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+    }
+    input[type="text"] {
+      padding: 10px;
+      width: 300px;
+      font-size: 16px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    /* Flex container for file types, centers everything in a row */
+    .file-types-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin: 20px 0;
+    }
+    /* Styling individual file type items */
+    .file-type-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .file-types-label {
+      font-weight: bold;
+    }
+    #vpnReminder {
+      font-weight: bold;
+      margin-top: 20px;
+    }
+  </style>
 </head>
 <body>
-    <br>
-    <h1>Movie/TV Show Downloader</h1>
-    <input type="text" id="movieInput" placeholder="Enter name">
-    <button onclick="searchMovie()">Search</button>
-    <br><br>
-    Do not make typos or search will not work. Also please use a VPN
+  <h1>Movie/TV Show Downloader</h1>
+  
+  <!-- Auto Suggestions / Autocomplete -->
+  <input list="suggestions" type="text" id="movieInput" placeholder="Enter name">
+  <datalist id="suggestions">
+    <!-- Options will be loaded from auto.txt if enough characters are typed -->
+  </datalist>
+  
+  <br><br>
+  
+  <!-- File Types Flex Container -->
+  <div class="file-types-container">
+    <span class="file-types-label">Search for:</span>
+    <label class="file-type-item"><input type="checkbox" id="ext_mp4" checked> .mp4</label>
+    <label class="file-type-item"><input type="checkbox" id="ext_mkv" checked> .mkv</label>
+    <label class="file-type-item"><input type="checkbox" id="ext_webm" checked> .webm</label>
+    <label class="file-type-item"><input type="checkbox" id="ext_avi" checked> .avi</label>
+  </div>
+  
+  <!-- Search and Copy URL Buttons -->
+  <button onclick="searchMovie()">Search</button>
+  <button onclick="copySearchUrl()">Copy Search URL</button>
+  
+  <!-- VPN Reminder -->
+  <p id="vpnReminder"></p>
+  
+  <script>
+    let autoSuggestions = []; // Global array to store suggestions from auto.txt
 
-    <script>
-        function searchMovie() {
-    let movieName = document.getElementById("movieInput").value;
-    if (movieName.trim() !== "") {
-        let encodedName = encodeURIComponent(`"${movieName}"`);
-        let searchUrl = `https://www.google.com/search?q=intext%3A${encodedName}+intitle%3A%22index.of%22+%2B%28wmv%7Cmpg%7Cavi%7Cmp4%7Cmkv%7Cmov%29+-inurl%3A%28jsp%7Cpl%7Cphp%7Chtml%7Caspx%7Chtm%7Ccf%7Cshtml%29`;
-        window.open(searchUrl, "_blank");
-    } else {
-        alert("Please enter a movie name.");
+    // Load autocomplete suggestions from auto.txt and store in global variable.
+    function loadAutoSuggestions() {
+      fetch('auto.txt')
+        .then(response => {
+          if (!response.ok) throw new Error('Network response was not OK');
+          return response.text();
+        })
+        .then(text => {
+          autoSuggestions = text.split('\n').map(item => item.trim()).filter(item => item);
+          updateDatalist();
+        })
+        .catch(error => {
+          console.error('Error loading auto suggestions:', error);
+        });
     }
-            document.getElementById("movieInput").addEventListener("keydown", function(event) {
-    if (event.key === "Enter") searchMovie();
-});
 
-}
-}</script>
+    // Update datalist options only if input length is 5 or more characters.
+    function updateDatalist() {
+      const inputValue = document.getElementById('movieInput').value;
+      const dataList = document.getElementById('suggestions');
+      dataList.innerHTML = ''; // Clear existing options.
+      if (inputValue.length >= 5) {
+        autoSuggestions.forEach(suggestion => {
+          const option = document.createElement('option');
+          option.value = suggestion;
+          dataList.appendChild(option);
+        });
+      }
+    }
+
+    // Listen for input events to update datalist.
+    document.getElementById('movieInput').addEventListener('input', updateDatalist);
+
+    // Get selected file extensions from checkboxes.
+    function getSelectedExtensions() {
+      const exts = [];
+      if (document.getElementById("ext_mp4").checked) exts.push("mp4");
+      if (document.getElementById("ext_mkv").checked) exts.push("mkv");
+      if (document.getElementById("ext_webm").checked) exts.push("webm");
+      if (document.getElementById("ext_avi").checked) exts.push("avi");
+      return exts;
+    }
+
+    // Create and open the search URL based on input and selected file types.
+    function searchMovie() {
+      let movieName = document.getElementById("movieInput").value;
+      if (movieName.trim() !== "") {
+        let encodedName = encodeURIComponent(`"${movieName}"`);
+        let exts = getSelectedExtensions();
+        let fileQuery = exts.length ? exts.join("%7C") : "wmv%7Cmpg%7Cavi%7Cmp4%7Cmkv%7Cmov";
+        let searchUrl = `https://www.google.com/search?q=intext%3A${encodedName}+intitle%3A%22index.of%22+%2B%28${fileQuery}%29+-inurl%3A%28jsp%7Cpl%7Cphp%7Chtml%7Caspx%7Chtm%7Ccf%7Cshtml%29`;
+        localStorage.setItem("lastSearchUrl", searchUrl);
+        window.open(searchUrl, "_blank");
+      } else {
+        alert("Please enter a movie name.");
+      }
+    }
+
+    // Copy the last search URL to the clipboard.
+    function copySearchUrl() {
+      const url = localStorage.getItem("lastSearchUrl");
+      if (url) {
+        navigator.clipboard.writeText(url)
+          .then(() => alert("Search URL copied to clipboard!"))
+          .catch(() => alert("Failed to copy URL."));
+      } else {
+        alert("No search URL to copy yet.");
+      }
+    }
+
+    // Allow the user to hit 'Enter' in the input field to search.
+    document.getElementById("movieInput").addEventListener("keydown", function(event) {
+      if (event.key === "Enter") searchMovie();
+    });
+
+    // Check the user's IP to determine if a VPN is being used.
+    function checkVPN() {
+      fetch('https://vpnapi.io/api/?key=free')
+        .then(response => response.json())
+        .then(data => {
+          const vpnReminder = document.getElementById('vpnReminder');
+          if (data && data.security && data.security.vpn) {
+            vpnReminder.textContent = "VPN detected: Your privacy is protected.";
+            vpnReminder.style.color = "green";
+          } else {
+            vpnReminder.textContent = "No VPN detected: PLEASE use a VPN for ANONYMITY!";
+            vpnReminder.style.color = "red";
+          }
+        })
+        .catch(err => {
+          console.error("VPN Check Error:", err);
+          document.getElementById('vpnReminder').textContent = "VPN check could not be performed.";
+        });
+    }
+
+    // Load autocomplete suggestions and perform VPN check on page load.
+    window.addEventListener('load', () => {
+      loadAutoSuggestions();
+      checkVPN();
+    });
+
+    // Register service worker for PWA support.
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('service-worker.js')
+          .then(function(registration) {
+            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+          })
+          .catch(function(err) {
+            console.log('ServiceWorker registration failed: ', err);
+          });
+      });
+    }
+  </script>
 </body>
 </html>
